@@ -234,9 +234,9 @@ typedef void (dictScanFunction)(void *privdata, const dictEntry *de);
         (d)->type->keyCompare((d)->privdata, key1, key2) : \
         (key1) == (key2))
 
-// 计算给定键的哈希值
+// 计算给定键的哈希值,可以自定义哈希函数，也可以使用dict.c中定义的函数
 #define dictHashKey(d, key) (d)->type->hashFunction(key)
-// 返回获取给定节点的键
+// 返回获取给定节点的键,
 #define dictGetKey(he) ((he)->key)
 // 返回获取给定节点的值
 #define dictGetVal(he) ((he)->v.val)
