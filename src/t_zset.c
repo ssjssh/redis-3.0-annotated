@@ -177,7 +177,7 @@ void zslFree(zskiplist *zsl) {
  * 返回值介乎 1 和 ZSKIPLIST_MAXLEVEL 之间（包含 ZSKIPLIST_MAXLEVEL），
  * 根据随机算法所使用的幂次定律，越大的值生成的几率越小。
  *
- * T = O(N)
+ * T = O(1)
  */
 int zslRandomLevel(void) {
     int level = 1;
@@ -194,7 +194,7 @@ int zslRandomLevel(void) {
  * 
  * 函数的返回值为新节点。
  *
- * T_wrost = O(N^2), T_avg = O(N log N)
+ * T_wrost = O(N), T_avg = O(log N)
  */
 zskiplistNode *zslInsert(zskiplist *zsl, double score, robj *obj) {
     zskiplistNode *update[ZSKIPLIST_MAXLEVEL], *x;
@@ -204,7 +204,7 @@ zskiplistNode *zslInsert(zskiplist *zsl, double score, robj *obj) {
     redisAssert(!isnan(score));
 
     // 在各个层查找节点的插入位置
-    // T_wrost = O(N^2), T_avg = O(N log N)
+    // T_wrost = O(N), T_avg = O(log N)
     x = zsl->header;
     for (i = zsl->level - 1; i >= 0; i--) {
 
@@ -246,7 +246,6 @@ zskiplistNode *zslInsert(zskiplist *zsl, double score, robj *obj) {
      */
 
     // 获取一个随机值作为新节点的层数
-    // T = O(N)
     level = zslRandomLevel();
 
     // 如果新节点的层数比表中其他节点的层数都要大
@@ -349,7 +348,7 @@ void zslDeleteNode(zskiplist *zsl, zskiplistNode *x, zskiplistNode **update) {
  *
  * 从跳跃表 zsl 中删除包含给定节点 score 并且带有指定对象 obj 的节点。
  *
- * T_wrost = O(N^2), T_avg = O(N log N)
+ * T_wrost = O(N), T_avg = O(log N)
  */
 int zslDelete(zskiplist *zsl, double score, robj *obj) {
     zskiplistNode *update[ZSKIPLIST_MAXLEVEL], *x;
@@ -556,11 +555,9 @@ unsigned long zslDeleteRangeByScore(zskiplist *zsl, zrangespec *range, dict *dic
         update[i] = x;
     }
 
-    /* Current node is the last with score < or <= min. */
     // 定位到给定范围开始的第一个节点
     x = x->level[0].forward;
 
-    /* Delete nodes while in range. */
     // 删除范围中的所有节点
     // T = O(N)
     while (x &&
