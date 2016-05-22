@@ -53,8 +53,8 @@ void listTypeTryConversion(robj *subject, robj *value) {
     if (sdsEncodedObject(value) &&
         // 看字符串是否过长
         sdslen(value->ptr) > server.list_max_ziplist_value)
-            // 将编码转换为双端链表
-            listTypeConvert(subject,REDIS_ENCODING_LINKEDLIST);
+        // 将编码转换为双端链表
+        listTypeConvert(subject, REDIS_ENCODING_LINKEDLIST);
 }
 
 /* The function pushes an element to the specified list object 'subject',
@@ -77,30 +77,30 @@ void listTypePush(robj *subject, robj *value, int where) {
 
     /* Check if we need to convert the ziplist */
     // 是否需要转换编码？
-    listTypeTryConversion(subject,value);
+    listTypeTryConversion(subject, value);
 
     if (subject->encoding == REDIS_ENCODING_ZIPLIST &&
         ziplistLen(subject->ptr) >= server.list_max_ziplist_entries)
-            listTypeConvert(subject,REDIS_ENCODING_LINKEDLIST);
+        listTypeConvert(subject, REDIS_ENCODING_LINKEDLIST);
 
     // ZIPLIST
     if (subject->encoding == REDIS_ENCODING_ZIPLIST) {
         int pos = (where == REDIS_HEAD) ? ZIPLIST_HEAD : ZIPLIST_TAIL;
         // 取出对象的值，因为 ZIPLIST 只能保存字符串或整数
         value = getDecodedObject(value);
-        subject->ptr = ziplistPush(subject->ptr,value->ptr,sdslen(value->ptr),pos);
+        subject->ptr = ziplistPush(subject->ptr, value->ptr, sdslen(value->ptr), pos);
         decrRefCount(value);
 
-    // 双端链表
+        // 双端链表
     } else if (subject->encoding == REDIS_ENCODING_LINKEDLIST) {
         if (where == REDIS_HEAD) {
-            listAddNodeHead(subject->ptr,value);
+            listAddNodeHead(subject->ptr, value);
         } else {
-            listAddNodeTail(subject->ptr,value);
+            listAddNodeTail(subject->ptr, value);
         }
         incrRefCount(value);
 
-    // 未知编码
+        // 未知编码
     } else {
         redisPanic("Unknown list encoding");
     }
@@ -129,20 +129,20 @@ robj *listTypePop(robj *subject, int where) {
         // 决定弹出元素的位置
         int pos = (where == REDIS_HEAD) ? 0 : -1;
 
-        p = ziplistIndex(subject->ptr,pos);
-        if (ziplistGet(p,&vstr,&vlen,&vlong)) {
+        p = ziplistIndex(subject->ptr, pos);
+        if (ziplistGet(p, &vstr, &vlen, &vlong)) {
             // 为被弹出元素创建对象
             if (vstr) {
-                value = createStringObject((char*)vstr,vlen);
+                value = createStringObject((char *) vstr, vlen);
             } else {
                 value = createStringObjectFromLongLong(vlong);
             }
             /* We only need to delete an element when it exists */
             // 从 ziplist 中删除被弹出元素
-            subject->ptr = ziplistDelete(subject->ptr,&p);
+            subject->ptr = ziplistDelete(subject->ptr, &p);
         }
 
-    // 双端链表
+        // 双端链表
     } else if (subject->encoding == REDIS_ENCODING_LINKEDLIST) {
 
         list *list = subject->ptr;
@@ -159,10 +159,10 @@ robj *listTypePop(robj *subject, int where) {
         if (ln != NULL) {
             value = listNodeValue(ln);
             incrRefCount(value);
-            listDelNode(list,ln);
+            listDelNode(list, ln);
         }
 
-    // 未知编码
+        // 未知编码
     } else {
         redisPanic("Unknown list encoding");
     }
@@ -180,11 +180,11 @@ unsigned long listTypeLength(robj *subject) {
     if (subject->encoding == REDIS_ENCODING_ZIPLIST) {
         return ziplistLen(subject->ptr);
 
-    // 双端链表
+        // 双端链表
     } else if (subject->encoding == REDIS_ENCODING_LINKEDLIST) {
-        return listLength((list*)subject->ptr);
+        return listLength((list *) subject->ptr);
 
-    // 未知编码
+        // 未知编码
     } else {
         redisPanic("Unknown list encoding");
     }
@@ -212,13 +212,13 @@ listTypeIterator *listTypeInitIterator(robj *subject, long index, unsigned char 
 
     // ZIPLIST
     if (li->encoding == REDIS_ENCODING_ZIPLIST) {
-        li->zi = ziplistIndex(subject->ptr,index);
+        li->zi = ziplistIndex(subject->ptr, index);
 
-    // 双端链表
+        // 双端链表
     } else if (li->encoding == REDIS_ENCODING_LINKEDLIST) {
-        li->ln = listIndex(subject->ptr,index);
+        li->ln = listIndex(subject->ptr, index);
 
-    // 未知编码
+        // 未知编码
     } else {
         redisPanic("Unknown list encoding");
     }
@@ -257,13 +257,13 @@ int listTypeNext(listTypeIterator *li, listTypeEntry *entry) {
         // 移动迭代器的指针
         if (entry->zi != NULL) {
             if (li->direction == REDIS_TAIL)
-                li->zi = ziplistNext(li->subject->ptr,li->zi);
+                li->zi = ziplistNext(li->subject->ptr, li->zi);
             else
-                li->zi = ziplistPrev(li->subject->ptr,li->zi);
+                li->zi = ziplistPrev(li->subject->ptr, li->zi);
             return 1;
         }
 
-    // 迭代双端链表
+        // 迭代双端链表
     } else if (li->encoding == REDIS_ENCODING_LINKEDLIST) {
 
         // 记录当前节点到 entry
@@ -278,7 +278,7 @@ int listTypeNext(listTypeIterator *li, listTypeEntry *entry) {
             return 1;
         }
 
-    // 未知编码
+        // 未知编码
     } else {
         redisPanic("Unknown list encoding");
     }
@@ -305,15 +305,15 @@ robj *listTypeGet(listTypeEntry *entry) {
         unsigned int vlen;
         long long vlong;
         redisAssert(entry->zi != NULL);
-        if (ziplistGet(entry->zi,&vstr,&vlen,&vlong)) {
+        if (ziplistGet(entry->zi, &vstr, &vlen, &vlong)) {
             if (vstr) {
-                value = createStringObject((char*)vstr,vlen);
+                value = createStringObject((char *) vstr, vlen);
             } else {
                 value = createStringObjectFromLongLong(vlong);
             }
         }
 
-    // 从双端链表中取出节点的值
+        // 从双端链表中取出节点的值
     } else if (li->encoding == REDIS_ENCODING_LINKEDLIST) {
         redisAssert(entry->ln != NULL);
         value = listNodeValue(entry->ln);
@@ -346,29 +346,29 @@ void listTypeInsert(listTypeEntry *entry, robj *value, int where) {
         value = getDecodedObject(value);
 
         if (where == REDIS_TAIL) {
-            unsigned char *next = ziplistNext(subject->ptr,entry->zi);
+            unsigned char *next = ziplistNext(subject->ptr, entry->zi);
 
             /* When we insert after the current element, but the current element
              * is the tail of the list, we need to do a push. */
             if (next == NULL) {
                 // next 是表尾节点，push 新节点到表尾
-                subject->ptr = ziplistPush(subject->ptr,value->ptr,sdslen(value->ptr),REDIS_TAIL);
+                subject->ptr = ziplistPush(subject->ptr, value->ptr, sdslen(value->ptr), REDIS_TAIL);
             } else {
                 // 插入到到节点之后
-                subject->ptr = ziplistInsert(subject->ptr,next,value->ptr,sdslen(value->ptr));
+                subject->ptr = ziplistInsert(subject->ptr, next, value->ptr, sdslen(value->ptr));
             }
         } else {
-            subject->ptr = ziplistInsert(subject->ptr,entry->zi,value->ptr,sdslen(value->ptr));
+            subject->ptr = ziplistInsert(subject->ptr, entry->zi, value->ptr, sdslen(value->ptr));
         }
         decrRefCount(value);
 
-    // 插入到双端链表
+        // 插入到双端链表
     } else if (entry->li->encoding == REDIS_ENCODING_LINKEDLIST) {
 
         if (where == REDIS_TAIL) {
-            listInsertNode(subject->ptr,entry->ln,value,AL_START_TAIL);
+            listInsertNode(subject->ptr, entry->ln, value, AL_START_TAIL);
         } else {
-            listInsertNode(subject->ptr,entry->ln,value,AL_START_HEAD);
+            listInsertNode(subject->ptr, entry->ln, value, AL_START_HEAD);
         }
 
         incrRefCount(value);
@@ -389,11 +389,11 @@ int listTypeEqual(listTypeEntry *entry, robj *o) {
     listTypeIterator *li = entry->li;
 
     if (li->encoding == REDIS_ENCODING_ZIPLIST) {
-        redisAssertWithInfo(NULL,o,sdsEncodedObject(o));
-        return ziplistCompare(entry->zi,o->ptr,sdslen(o->ptr));
+        redisAssertWithInfo(NULL, o, sdsEncodedObject(o));
+        return ziplistCompare(entry->zi, o->ptr, sdslen(o->ptr));
 
     } else if (li->encoding == REDIS_ENCODING_LINKEDLIST) {
-        return equalStringObjects(o,listNodeValue(entry->ln));
+        return equalStringObjects(o, listNodeValue(entry->ln));
 
     } else {
         redisPanic("Unknown list encoding");
@@ -413,16 +413,16 @@ void listTypeDelete(listTypeEntry *entry) {
 
         unsigned char *p = entry->zi;
 
-        li->subject->ptr = ziplistDelete(li->subject->ptr,&p);
+        li->subject->ptr = ziplistDelete(li->subject->ptr, &p);
 
         /* Update position of the iterator depending on the direction */
         // 删除节点之后，更新迭代器的指针
         if (li->direction == REDIS_TAIL)
             li->zi = p;
         else
-            li->zi = ziplistPrev(li->subject->ptr,p);
+            li->zi = ziplistPrev(li->subject->ptr, p);
 
-    // 双端链表
+        // 双端链表
     } else if (entry->li->encoding == REDIS_ENCODING_LINKEDLIST) {
 
         // 记录后置节点
@@ -434,7 +434,7 @@ void listTypeDelete(listTypeEntry *entry) {
             next = entry->ln->prev;
 
         // 删除当前节点
-        listDelNode(li->subject->ptr,entry->ln);
+        listDelNode(li->subject->ptr, entry->ln);
 
         // 删除节点之后，更新迭代器的指针
         li->ln = next;
@@ -453,19 +453,23 @@ void listTypeConvert(robj *subject, int enc) {
 
     listTypeEntry entry;
 
-    redisAssertWithInfo(NULL,subject,subject->type == REDIS_LIST);
+    redisAssertWithInfo(NULL, subject, subject->type == REDIS_LIST);
 
     // 转换成双端链表
     if (enc == REDIS_ENCODING_LINKEDLIST) {
 
         list *l = listCreate();
 
-        listSetFreeMethod(l,decrRefCountVoid);
+        /**
+         * 设置list的节点销毁函数,因为list中存储的元素也是一个对象,因此需要
+         * 在list对象销毁的时候调用来减少引用或者直接销毁元素.
+         * */
+        listSetFreeMethod(l, decrRefCountVoid);
 
         /* listTypeGet returns a robj with incremented refcount */
         // 遍历 ziplist ，并将里面的值全部添加到双端链表中
-        li = listTypeInitIterator(subject,0,REDIS_TAIL);
-        while (listTypeNext(li,&entry)) listAddNodeTail(l,listTypeGet(&entry));
+        li = listTypeInitIterator(subject, 0, REDIS_TAIL);
+        while (listTypeNext(li, &entry)) listAddNodeTail(l, listTypeGet(&entry));
         listTypeReleaseIterator(li);
 
         // 更新编码
@@ -474,7 +478,7 @@ void listTypeConvert(robj *subject, int enc) {
         // 释放原来的 ziplist
         zfree(subject->ptr);
 
-        // 更新对象值指针
+        // 更新对象值指针,对象的指针变了,但是对象没有改变.
         subject->ptr = l;
 
     } else {
@@ -491,18 +495,18 @@ void pushGenericCommand(redisClient *c, int where) {
     int j, waiting = 0, pushed = 0;
 
     // 取出列表对象
-    robj *lobj = lookupKeyWrite(c->db,c->argv[1]);
+    robj *lobj = lookupKeyWrite(c->db, c->argv[1]);
 
     // 如果列表对象不存在，那么可能有客户端在等待这个键的出现
     int may_have_waiting_clients = (lobj == NULL);
 
     if (lobj && lobj->type != REDIS_LIST) {
-        addReply(c,shared.wrongtypeerr);
+        addReply(c, shared.wrongtypeerr);
         return;
     }
 
     // 将列表状态设置为就绪
-    if (may_have_waiting_clients) signalListAsReady(c,c->argv[1]);
+    if (may_have_waiting_clients) signalListAsReady(c, c->argv[1]);
 
     // 遍历所有输入值，并将它们添加到列表中
     for (j = 2; j < c->argc; j++) {
@@ -513,11 +517,11 @@ void pushGenericCommand(redisClient *c, int where) {
         // 如果列表对象不存在，那么创建一个，并关联到数据库
         if (!lobj) {
             lobj = createZiplistObject();
-            dbAdd(c->db,c->argv[1],lobj);
+            dbAdd(c->db, c->argv[1], lobj);
         }
 
         // 将值推入到列表
-        listTypePush(lobj,c->argv[j],where);
+        listTypePush(lobj, c->argv[j], where);
 
         pushed++;
     }
@@ -530,21 +534,21 @@ void pushGenericCommand(redisClient *c, int where) {
         char *event = (where == REDIS_HEAD) ? "lpush" : "rpush";
 
         // 发送键修改信号
-        signalModifiedKey(c->db,c->argv[1]);
+        signalModifiedKey(c->db, c->argv[1]);
 
         // 发送事件通知
-        notifyKeyspaceEvent(REDIS_NOTIFY_LIST,event,c->argv[1],c->db->id);
+        notifyKeyspaceEvent(REDIS_NOTIFY_LIST, event, c->argv[1], c->db->id);
     }
 
     server.dirty += pushed;
 }
 
 void lpushCommand(redisClient *c) {
-    pushGenericCommand(c,REDIS_HEAD);
+    pushGenericCommand(c, REDIS_HEAD);
 }
 
 void rpushCommand(redisClient *c) {
-    pushGenericCommand(c,REDIS_TAIL);
+    pushGenericCommand(c, REDIS_TAIL);
 }
 
 void pushxGenericCommand(redisClient *c, robj *refval, robj *val, int where) {
@@ -554,8 +558,9 @@ void pushxGenericCommand(redisClient *c, robj *refval, robj *val, int where) {
     int inserted = 0;
 
     // 取出列表对象
-    if ((subject = lookupKeyReadOrReply(c,c->argv[1],shared.czero)) == NULL ||
-        checkType(c,subject,REDIS_LIST)) return;
+    if ((subject = lookupKeyReadOrReply(c, c->argv[1], shared.czero)) == NULL ||
+        checkType(c, subject, REDIS_LIST))
+        return;
 
     // 执行的是 LINSERT 命令
     if (refval != NULL) {
@@ -565,15 +570,15 @@ void pushxGenericCommand(redisClient *c, robj *refval, robj *val, int where) {
          * to do the actual insert), so we assume this value can be inserted
          * and convert the ziplist to a regular list if necessary. */
         // 看保存值 value 是否需要将列表编码转换为双端链表
-        listTypeTryConversion(subject,val);
+        listTypeTryConversion(subject, val);
 
         /* Seek refval from head to tail */
         // 在列表中查找 refval 对象
-        iter = listTypeInitIterator(subject,0,REDIS_TAIL);
-        while (listTypeNext(iter,&entry)) {
-            if (listTypeEqual(&entry,refval)) {
+        iter = listTypeInitIterator(subject, 0, REDIS_TAIL);
+        while (listTypeNext(iter, &entry)) {
+            if (listTypeEqual(&entry, refval)) {
                 // 找到了，将值插入到节点的前面或后面
-                listTypeInsert(&entry,val,where);
+                listTypeInsert(&entry, val, where);
                 inserted = 1;
                 break;
             }
@@ -585,44 +590,44 @@ void pushxGenericCommand(redisClient *c, robj *refval, robj *val, int where) {
             // 查看插入之后是否需要将编码转换为双端链表
             if (subject->encoding == REDIS_ENCODING_ZIPLIST &&
                 ziplistLen(subject->ptr) > server.list_max_ziplist_entries)
-                    listTypeConvert(subject,REDIS_ENCODING_LINKEDLIST);
+                listTypeConvert(subject, REDIS_ENCODING_LINKEDLIST);
 
-            signalModifiedKey(c->db,c->argv[1]);
+            signalModifiedKey(c->db, c->argv[1]);
 
-            notifyKeyspaceEvent(REDIS_NOTIFY_LIST,"linsert",
-                                c->argv[1],c->db->id);
+            notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "linsert",
+                                c->argv[1], c->db->id);
             server.dirty++;
         } else {
             /* Notify client of a failed insert */
             // refval 不存在，插入失败
-            addReply(c,shared.cnegone);
+            addReply(c, shared.cnegone);
             return;
         }
 
-    // 执行的是 LPUSHX 或 RPUSHX 命令
+        // 执行的是 LPUSHX 或 RPUSHX 命令
     } else {
         char *event = (where == REDIS_HEAD) ? "lpush" : "rpush";
 
-        listTypePush(subject,val,where);
+        listTypePush(subject, val, where);
 
-        signalModifiedKey(c->db,c->argv[1]);
+        signalModifiedKey(c->db, c->argv[1]);
 
-        notifyKeyspaceEvent(REDIS_NOTIFY_LIST,event,c->argv[1],c->db->id);
+        notifyKeyspaceEvent(REDIS_NOTIFY_LIST, event, c->argv[1], c->db->id);
 
         server.dirty++;
     }
 
-    addReplyLongLong(c,listTypeLength(subject));
+    addReplyLongLong(c, listTypeLength(subject));
 }
 
 void lpushxCommand(redisClient *c) {
     c->argv[2] = tryObjectEncoding(c->argv[2]);
-    pushxGenericCommand(c,NULL,c->argv[2],REDIS_HEAD);
+    pushxGenericCommand(c, NULL, c->argv[2], REDIS_HEAD);
 }
 
 void rpushxCommand(redisClient *c) {
     c->argv[2] = tryObjectEncoding(c->argv[2]);
-    pushxGenericCommand(c,NULL,c->argv[2],REDIS_TAIL);
+    pushxGenericCommand(c, NULL, c->argv[2], REDIS_TAIL);
 }
 
 void linsertCommand(redisClient *c) {
@@ -630,31 +635,31 @@ void linsertCommand(redisClient *c) {
     // 编码 refval 对象
     c->argv[4] = tryObjectEncoding(c->argv[4]);
 
-    if (strcasecmp(c->argv[2]->ptr,"after") == 0) {
-        pushxGenericCommand(c,c->argv[3],c->argv[4],REDIS_TAIL);
+    if (strcasecmp(c->argv[2]->ptr, "after") == 0) {
+        pushxGenericCommand(c, c->argv[3], c->argv[4], REDIS_TAIL);
 
-    } else if (strcasecmp(c->argv[2]->ptr,"before") == 0) {
-        pushxGenericCommand(c,c->argv[3],c->argv[4],REDIS_HEAD);
+    } else if (strcasecmp(c->argv[2]->ptr, "before") == 0) {
+        pushxGenericCommand(c, c->argv[3], c->argv[4], REDIS_HEAD);
 
     } else {
-        addReply(c,shared.syntaxerr);
+        addReply(c, shared.syntaxerr);
     }
 }
 
 void llenCommand(redisClient *c) {
 
-    robj *o = lookupKeyReadOrReply(c,c->argv[1],shared.czero);
+    robj *o = lookupKeyReadOrReply(c, c->argv[1], shared.czero);
 
-    if (o == NULL || checkType(c,o,REDIS_LIST)) return;
+    if (o == NULL || checkType(c, o, REDIS_LIST)) return;
 
-    addReplyLongLong(c,listTypeLength(o));
+    addReplyLongLong(c, listTypeLength(o));
 }
 
 void lindexCommand(redisClient *c) {
 
-    robj *o = lookupKeyReadOrReply(c,c->argv[1],shared.nullbulk);
+    robj *o = lookupKeyReadOrReply(c, c->argv[1], shared.nullbulk);
 
-    if (o == NULL || checkType(c,o,REDIS_LIST)) return;
+    if (o == NULL || checkType(c, o, REDIS_LIST)) return;
     long index;
     robj *value = NULL;
 
@@ -669,30 +674,31 @@ void lindexCommand(redisClient *c) {
         unsigned int vlen;
         long long vlong;
 
-        p = ziplistIndex(o->ptr,index);
+        p = ziplistIndex(o->ptr, index);
 
-        if (ziplistGet(p,&vstr,&vlen,&vlong)) {
+        if (ziplistGet(p, &vstr, &vlen, &vlong)) {
             if (vstr) {
-                value = createStringObject((char*)vstr,vlen);
+                value = createStringObject((char *) vstr, vlen);
             } else {
                 value = createStringObjectFromLongLong(vlong);
             }
-            addReplyBulk(c,value);
+            addReplyBulk(c, value);
+            //新建立的对象所有必须要销毁,而下面的情况不用销毁是因为使用是直接从list中取出的对象.
             decrRefCount(value);
         } else {
-            addReply(c,shared.nullbulk);
+            addReply(c, shared.nullbulk);
         }
 
-    // 根据索引，遍历双端链表，直到指定位置
+        // 根据索引，遍历双端链表，直到指定位置
     } else if (o->encoding == REDIS_ENCODING_LINKEDLIST) {
 
-        listNode *ln = listIndex(o->ptr,index);
+        listNode *ln = listIndex(o->ptr, index);
 
         if (ln != NULL) {
             value = listNodeValue(ln);
-            addReplyBulk(c,value);
+            addReplyBulk(c, value);
         } else {
-            addReply(c,shared.nullbulk);
+            addReply(c, shared.nullbulk);
         }
     } else {
         redisPanic("Unknown list encoding");
@@ -702,9 +708,9 @@ void lindexCommand(redisClient *c) {
 void lsetCommand(redisClient *c) {
 
     // 取出列表对象
-    robj *o = lookupKeyWriteOrReply(c,c->argv[1],shared.nokeyerr);
+    robj *o = lookupKeyWriteOrReply(c, c->argv[1], shared.nokeyerr);
 
-    if (o == NULL || checkType(c,o,REDIS_LIST)) return;
+    if (o == NULL || checkType(c, o, REDIS_LIST)) return;
     long index;
 
     // 取出值对象 value
@@ -715,46 +721,46 @@ void lsetCommand(redisClient *c) {
         return;
 
     // 查看保存 value 值是否需要转换列表的底层编码
-    listTypeTryConversion(o,value);
+    listTypeTryConversion(o, value);
 
     // 设置到 ziplist
     if (o->encoding == REDIS_ENCODING_ZIPLIST) {
         unsigned char *p, *zl = o->ptr;
         // 查找索引
-        p = ziplistIndex(zl,index);
+        p = ziplistIndex(zl, index);
         if (p == NULL) {
-            addReply(c,shared.outofrangeerr);
+            addReply(c, shared.outofrangeerr);
         } else {
             // 删除现有的值
-            o->ptr = ziplistDelete(o->ptr,&p);
+            o->ptr = ziplistDelete(o->ptr, &p);
             // 插入新值到指定索引
             value = getDecodedObject(value);
-            o->ptr = ziplistInsert(o->ptr,p,value->ptr,sdslen(value->ptr));
+            o->ptr = ziplistInsert(o->ptr, p, value->ptr, sdslen(value->ptr));
             decrRefCount(value);
 
-            addReply(c,shared.ok);
-            signalModifiedKey(c->db,c->argv[1]);
-            notifyKeyspaceEvent(REDIS_NOTIFY_LIST,"lset",c->argv[1],c->db->id);
+            addReply(c, shared.ok);
+            signalModifiedKey(c->db, c->argv[1]);
+            notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "lset", c->argv[1], c->db->id);
             server.dirty++;
         }
 
-    // 设置到双端链表
+        // 设置到双端链表
     } else if (o->encoding == REDIS_ENCODING_LINKEDLIST) {
 
-        listNode *ln = listIndex(o->ptr,index);
+        listNode *ln = listIndex(o->ptr, index);
 
         if (ln == NULL) {
-            addReply(c,shared.outofrangeerr);
+            addReply(c, shared.outofrangeerr);
         } else {
             // 删除旧值对象
-            decrRefCount((robj*)listNodeValue(ln));
+            decrRefCount((robj *) listNodeValue(ln));
             // 指向新对象
             listNodeValue(ln) = value;
             incrRefCount(value);
 
-            addReply(c,shared.ok);
-            signalModifiedKey(c->db,c->argv[1]);
-            notifyKeyspaceEvent(REDIS_NOTIFY_LIST,"lset",c->argv[1],c->db->id);
+            addReply(c, shared.ok);
+            signalModifiedKey(c->db, c->argv[1]);
+            notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "lset", c->argv[1], c->db->id);
             server.dirty++;
         }
     } else {
@@ -765,38 +771,38 @@ void lsetCommand(redisClient *c) {
 void popGenericCommand(redisClient *c, int where) {
 
     // 取出列表对象
-    robj *o = lookupKeyWriteOrReply(c,c->argv[1],shared.nullbulk);
+    robj *o = lookupKeyWriteOrReply(c, c->argv[1], shared.nullbulk);
 
-    if (o == NULL || checkType(c,o,REDIS_LIST)) return;
+    if (o == NULL || checkType(c, o, REDIS_LIST)) return;
 
     // 弹出列表元素
-    robj *value = listTypePop(o,where);
+    robj *value = listTypePop(o, where);
 
     // 根据弹出元素是否为空，决定后续动作
     if (value == NULL) {
-        addReply(c,shared.nullbulk);
+        addReply(c, shared.nullbulk);
     } else {
         char *event = (where == REDIS_HEAD) ? "lpop" : "rpop";
 
-        addReplyBulk(c,value);
+        addReplyBulk(c, value);
         decrRefCount(value);
-        notifyKeyspaceEvent(REDIS_NOTIFY_LIST,event,c->argv[1],c->db->id);
+        notifyKeyspaceEvent(REDIS_NOTIFY_LIST, event, c->argv[1], c->db->id);
         if (listTypeLength(o) == 0) {
-            notifyKeyspaceEvent(REDIS_NOTIFY_GENERIC,"del",
-                                c->argv[1],c->db->id);
-            dbDelete(c->db,c->argv[1]);
+            notifyKeyspaceEvent(REDIS_NOTIFY_GENERIC, "del",
+                                c->argv[1], c->db->id);
+            dbDelete(c->db, c->argv[1]);
         }
-        signalModifiedKey(c->db,c->argv[1]);
+        signalModifiedKey(c->db, c->argv[1]);
         server.dirty++;
     }
 }
 
 void lpopCommand(redisClient *c) {
-    popGenericCommand(c,REDIS_HEAD);
+    popGenericCommand(c, REDIS_HEAD);
 }
 
 void rpopCommand(redisClient *c) {
-    popGenericCommand(c,REDIS_TAIL);
+    popGenericCommand(c, REDIS_TAIL);
 }
 
 void lrangeCommand(redisClient *c) {
@@ -805,48 +811,50 @@ void lrangeCommand(redisClient *c) {
 
     // 取出索引值 start 和 end
     if ((getLongFromObjectOrReply(c, c->argv[2], &start, NULL) != REDIS_OK) ||
-        (getLongFromObjectOrReply(c, c->argv[3], &end, NULL) != REDIS_OK)) return;
+        (getLongFromObjectOrReply(c, c->argv[3], &end, NULL) != REDIS_OK))
+        return;
 
     // 取出列表对象
-    if ((o = lookupKeyReadOrReply(c,c->argv[1],shared.emptymultibulk)) == NULL
-         || checkType(c,o,REDIS_LIST)) return;
+    if ((o = lookupKeyReadOrReply(c, c->argv[1], shared.emptymultibulk)) == NULL
+        || checkType(c, o, REDIS_LIST))
+        return;
 
     // 取出列表长度
     llen = listTypeLength(o);
 
     /* convert negative indexes */
     // 将负数索引转换成正数索引
-    if (start < 0) start = llen+start;
-    if (end < 0) end = llen+end;
+    if (start < 0) start = llen + start;
+    if (end < 0) end = llen + end;
     if (start < 0) start = 0;
 
     /* Invariant: start >= 0, so this test will be true when end < 0.
      * The range is empty when start > end or start >= length. */
     if (start > end || start >= llen) {
-        addReply(c,shared.emptymultibulk);
+        addReply(c, shared.emptymultibulk);
         return;
     }
-    if (end >= llen) end = llen-1;
-    rangelen = (end-start)+1;
+    if (end >= llen) end = llen - 1;
+    rangelen = (end - start) + 1;
 
     /* Return the result in form of a multi-bulk reply */
-    addReplyMultiBulkLen(c,rangelen);
+    addReplyMultiBulkLen(c, rangelen);
 
     if (o->encoding == REDIS_ENCODING_ZIPLIST) {
-        unsigned char *p = ziplistIndex(o->ptr,start);
+        unsigned char *p = ziplistIndex(o->ptr, start);
         unsigned char *vstr;
         unsigned int vlen;
         long long vlong;
 
         // 遍历 ziplist ，并将指定索引上的值添加到回复中
-        while(rangelen--) {
-            ziplistGet(p,&vstr,&vlen,&vlong);
+        while (rangelen--) {
+            ziplistGet(p, &vstr, &vlen, &vlong);
             if (vstr) {
-                addReplyBulkCBuffer(c,vstr,vlen);
+                addReplyBulkCBuffer(c, vstr, vlen);
             } else {
-                addReplyBulkLongLong(c,vlong);
+                addReplyBulkLongLong(c, vlong);
             }
-            p = ziplistNext(o->ptr,p);
+            p = ziplistNext(o->ptr, p);
         }
 
     } else if (o->encoding == REDIS_ENCODING_LINKEDLIST) {
@@ -854,12 +862,12 @@ void lrangeCommand(redisClient *c) {
 
         /* If we are nearest to the end of the list, reach the element
          * starting from tail and going backward, as it is faster. */
-        if (start > llen/2) start -= llen;
-        ln = listIndex(o->ptr,start);
+        if (start > llen / 2) start -= llen;
+        ln = listIndex(o->ptr, start);
 
         // 遍历双端链表，将指定索引上的值添加到回复
-        while(rangelen--) {
-            addReplyBulk(c,ln->value);
+        while (rangelen--) {
+            addReplyBulk(c, ln->value);
             ln = ln->next;
         }
 
@@ -876,19 +884,21 @@ void ltrimCommand(redisClient *c) {
 
     // 取出索引值 start 和 end
     if ((getLongFromObjectOrReply(c, c->argv[2], &start, NULL) != REDIS_OK) ||
-        (getLongFromObjectOrReply(c, c->argv[3], &end, NULL) != REDIS_OK)) return;
+        (getLongFromObjectOrReply(c, c->argv[3], &end, NULL) != REDIS_OK))
+        return;
 
     // 取出列表对象
-    if ((o = lookupKeyWriteOrReply(c,c->argv[1],shared.ok)) == NULL ||
-        checkType(c,o,REDIS_LIST)) return;
+    if ((o = lookupKeyWriteOrReply(c, c->argv[1], shared.ok)) == NULL ||
+        checkType(c, o, REDIS_LIST))
+        return;
 
     // 列表长度
     llen = listTypeLength(o);
 
     /* convert negative indexes */
     // 将负数索引转换成正数索引
-    if (start < 0) start = llen+start;
-    if (end < 0) end = llen+end;
+    if (start < 0) start = llen + start;
+    if (end < 0) end = llen + end;
     if (start < 0) start = 0;
 
     /* Invariant: start >= 0, so this test will be true when end < 0.
@@ -898,9 +908,9 @@ void ltrimCommand(redisClient *c) {
         ltrim = llen;
         rtrim = 0;
     } else {
-        if (end >= llen) end = llen-1;
+        if (end >= llen) end = llen - 1;
         ltrim = start;
-        rtrim = llen-end-1;
+        rtrim = llen - end - 1;
     }
 
     /* Remove list elements to perform the trim */
@@ -908,21 +918,21 @@ void ltrimCommand(redisClient *c) {
 
     if (o->encoding == REDIS_ENCODING_ZIPLIST) {
         // 删除左端元素
-        o->ptr = ziplistDeleteRange(o->ptr,0,ltrim);
+        o->ptr = ziplistDeleteRange(o->ptr, 0, ltrim);
         // 删除右端元素
-        o->ptr = ziplistDeleteRange(o->ptr,-rtrim,rtrim);
+        o->ptr = ziplistDeleteRange(o->ptr, -rtrim, rtrim);
 
     } else if (o->encoding == REDIS_ENCODING_LINKEDLIST) {
         list = o->ptr;
         // 删除左端元素
         for (j = 0; j < ltrim; j++) {
             ln = listFirst(list);
-            listDelNode(list,ln);
+            listDelNode(list, ln);
         }
         // 删除右端元素
         for (j = 0; j < rtrim; j++) {
             ln = listLast(list);
-            listDelNode(list,ln);
+            listDelNode(list, ln);
         }
 
     } else {
@@ -930,19 +940,19 @@ void ltrimCommand(redisClient *c) {
     }
 
     // 发送通知
-    notifyKeyspaceEvent(REDIS_NOTIFY_LIST,"ltrim",c->argv[1],c->db->id);
+    notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "ltrim", c->argv[1], c->db->id);
 
     // 如果列表已经为空，那么删除它
     if (listTypeLength(o) == 0) {
-        dbDelete(c->db,c->argv[1]);
-        notifyKeyspaceEvent(REDIS_NOTIFY_GENERIC,"del",c->argv[1],c->db->id);
+        dbDelete(c->db, c->argv[1]);
+        notifyKeyspaceEvent(REDIS_NOTIFY_GENERIC, "del", c->argv[1], c->db->id);
     }
 
-    signalModifiedKey(c->db,c->argv[1]);
+    signalModifiedKey(c->db, c->argv[1]);
 
     server.dirty++;
 
-    addReply(c,shared.ok);
+    addReply(c, shared.ok);
 }
 
 void lremCommand(redisClient *c) {
@@ -959,8 +969,8 @@ void lremCommand(redisClient *c) {
         return;
 
     // 取出列表对象
-    subject = lookupKeyWriteOrReply(c,c->argv[1],shared.czero);
-    if (subject == NULL || checkType(c,subject,REDIS_LIST)) return;
+    subject = lookupKeyWriteOrReply(c, c->argv[1], shared.czero);
+    if (subject == NULL || checkType(c, subject, REDIS_LIST)) return;
 
     /* Make sure obj is raw when we're dealing with a ziplist */
     if (subject->encoding == REDIS_ENCODING_ZIPLIST)
@@ -971,14 +981,14 @@ void lremCommand(redisClient *c) {
     // 根据 toremove 参数，决定是从表头还是表尾开始进行删除
     if (toremove < 0) {
         toremove = -toremove;
-        li = listTypeInitIterator(subject,-1,REDIS_HEAD);
+        li = listTypeInitIterator(subject, -1, REDIS_HEAD);
     } else {
-        li = listTypeInitIterator(subject,0,REDIS_TAIL);
+        li = listTypeInitIterator(subject, 0, REDIS_TAIL);
     }
 
     // 查找，比对对象，并进行删除
-    while (listTypeNext(li,&entry)) {
-        if (listTypeEqual(&entry,obj)) {
+    while (listTypeNext(li, &entry)) {
+        if (listTypeEqual(&entry, obj)) {
             listTypeDelete(&entry);
             server.dirty++;
             removed++;
@@ -993,11 +1003,11 @@ void lremCommand(redisClient *c) {
         decrRefCount(obj);
 
     // 删除空列表
-    if (listTypeLength(subject) == 0) dbDelete(c->db,c->argv[1]);
+    if (listTypeLength(subject) == 0) dbDelete(c->db, c->argv[1]);
 
-    addReplyLongLong(c,removed);
+    addReplyLongLong(c, removed);
 
-    if (removed) signalModifiedKey(c->db,c->argv[1]);
+    if (removed) signalModifiedKey(c->db, c->argv[1]);
 }
 
 /* This is the semantic of this command:
@@ -1021,65 +1031,66 @@ void rpoplpushHandlePush(redisClient *c, robj *dstkey, robj *dstobj, robj *value
     // 如果目标列表不存在，那么创建一个
     if (!dstobj) {
         dstobj = createZiplistObject();
-        dbAdd(c->db,dstkey,dstobj);
-        signalListAsReady(c,dstkey);
+        dbAdd(c->db, dstkey, dstobj);
+        signalListAsReady(c, dstkey);
     }
 
-    signalModifiedKey(c->db,dstkey);
+    signalModifiedKey(c->db, dstkey);
 
     // 将值推入目标列表中
-    listTypePush(dstobj,value,REDIS_HEAD);
+    listTypePush(dstobj, value, REDIS_HEAD);
 
-    notifyKeyspaceEvent(REDIS_NOTIFY_LIST,"lpush",dstkey,c->db->id);
+    notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "lpush", dstkey, c->db->id);
     /* Always send the pushed value to the client. */
-    addReplyBulk(c,value);
+    addReplyBulk(c, value);
 }
 
 void rpoplpushCommand(redisClient *c) {
     robj *sobj, *value;
-    
+
     // 来源列表
-    if ((sobj = lookupKeyWriteOrReply(c,c->argv[1],shared.nullbulk)) == NULL ||
-        checkType(c,sobj,REDIS_LIST)) return;
+    if ((sobj = lookupKeyWriteOrReply(c, c->argv[1], shared.nullbulk)) == NULL ||
+        checkType(c, sobj, REDIS_LIST))
+        return;
 
     // 空列表，没有元素可 pop ，直接返回
     if (listTypeLength(sobj) == 0) {
         /* This may only happen after loading very old RDB files. Recent
          * versions of Redis delete keys of empty lists. */
-        addReply(c,shared.nullbulk);
+        addReply(c, shared.nullbulk);
 
-    // 源列表非空
+        // 源列表非空
     } else {
 
         // 目标对象
-        robj *dobj = lookupKeyWrite(c->db,c->argv[2]);
+        robj *dobj = lookupKeyWrite(c->db, c->argv[2]);
         robj *touchedkey = c->argv[1];
 
         // 检查目标对象是否列表
-        if (dobj && checkType(c,dobj,REDIS_LIST)) return;
+        if (dobj && checkType(c, dobj, REDIS_LIST)) return;
         // 从源列表中弹出值
-        value = listTypePop(sobj,REDIS_TAIL);
+        value = listTypePop(sobj, REDIS_TAIL);
         /* We saved touched key, and protect it, since rpoplpushHandlePush
          * may change the client command argument vector (it does not
          * currently). */
         incrRefCount(touchedkey);
         // 将值推入目标列表中，如果目标列表不存在，那么创建一个新列表
-        rpoplpushHandlePush(c,c->argv[2],dobj,value);
+        rpoplpushHandlePush(c, c->argv[2], dobj, value);
 
         /* listTypePop returns an object with its refcount incremented */
         decrRefCount(value);
 
         /* Delete the source list when it is empty */
-        notifyKeyspaceEvent(REDIS_NOTIFY_LIST,"rpop",touchedkey,c->db->id);
+        notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "rpop", touchedkey, c->db->id);
 
         // 如果源列表已经为空，那么将它删除
         if (listTypeLength(sobj) == 0) {
-            dbDelete(c->db,touchedkey);
-            notifyKeyspaceEvent(REDIS_NOTIFY_GENERIC,"del",
-                                touchedkey,c->db->id);
+            dbDelete(c->db, touchedkey);
+            notifyKeyspaceEvent(REDIS_NOTIFY_GENERIC, "del",
+                                touchedkey, c->db->id);
         }
 
-        signalModifiedKey(c->db,touchedkey);
+        signalModifiedKey(c->db, touchedkey);
 
         decrRefCount(touchedkey);
 
@@ -1156,7 +1167,7 @@ void blockForKeys(redisClient *c, robj **keys, int numkeys, mstime_t timeout, ro
         // c->bpop.keys 是一个集合（值为 NULL 的字典）
         // 它记录所有造成客户端阻塞的键
         // 以下语句在键不存在于集合的时候，将它添加到集合
-        if (dictAdd(c->bpop.keys,keys[j],NULL) != DICT_OK) continue;
+        if (dictAdd(c->bpop.keys, keys[j], NULL) != DICT_OK) continue;
 
         incrRefCount(keys[j]);
 
@@ -1164,23 +1175,23 @@ void blockForKeys(redisClient *c, robj **keys, int numkeys, mstime_t timeout, ro
         // c->db->blocking_keys 字典的键为造成客户端阻塞的键
         // 而值则是一个链表，链表中包含了所有被阻塞的客户端
         // 以下程序将阻塞键和被阻塞客户端关联起来
-        de = dictFind(c->db->blocking_keys,keys[j]);
+        de = dictFind(c->db->blocking_keys, keys[j]);
         if (de == NULL) {
             // 链表不存在，新创建一个，并将它关联到字典中
             int retval;
 
             /* For every key we take a list of clients blocked for it */
             l = listCreate();
-            retval = dictAdd(c->db->blocking_keys,keys[j],l);
+            retval = dictAdd(c->db->blocking_keys, keys[j], l);
             incrRefCount(keys[j]);
-            redisAssertWithInfo(c,keys[j],retval == DICT_OK);
+            redisAssertWithInfo(c, keys[j], retval == DICT_OK);
         } else {
             l = dictGetVal(de);
         }
         // 将客户端填接到被阻塞客户端的链表中
-        listAddNodeTail(l,c);
+        listAddNodeTail(l, c);
     }
-    blockClient(c,REDIS_BLOCKED_LIST);
+    blockClient(c, REDIS_BLOCKED_LIST);
 }
 
 /* Unblock a client that's waiting in a blocking operation such as BLPOP.
@@ -1190,33 +1201,33 @@ void unblockClientWaitingData(redisClient *c) {
     dictIterator *di;
     list *l;
 
-    redisAssertWithInfo(c,NULL,dictSize(c->bpop.keys) != 0);
+    redisAssertWithInfo(c, NULL, dictSize(c->bpop.keys) != 0);
 
     // 遍历所有 key ，将它们从客户端 db->blocking_keys 的链表中移除
     di = dictGetIterator(c->bpop.keys);
     /* The client may wait for multiple keys, so unblock it for every key. */
-    while((de = dictNext(di)) != NULL) {
+    while ((de = dictNext(di)) != NULL) {
         robj *key = dictGetKey(de);
 
         /* Remove this client from the list of clients waiting for this key. */
         // 获取所有因为 key 而被阻塞的客户端的链表
-        l = dictFetchValue(c->db->blocking_keys,key);
+        l = dictFetchValue(c->db->blocking_keys, key);
 
-        redisAssertWithInfo(c,key,l != NULL);
+        redisAssertWithInfo(c, key, l != NULL);
 
         // 将指定客户端从链表中删除
-        listDelNode(l,listSearchKey(l,c));
+        listDelNode(l, listSearchKey(l, c));
 
         /* If the list is empty we need to remove it to avoid wasting memory */
         // 如果已经没有其他客户端阻塞在这个 key 上，那么删除这个链表
         if (listLength(l) == 0)
-            dictDelete(c->db->blocking_keys,key);
+            dictDelete(c->db->blocking_keys, key);
     }
     dictReleaseIterator(di);
 
     /* Cleanup the client structure */
     // 清空 bpop.keys 集合（字典）
-    dictEmpty(c->bpop.keys,NULL);
+    dictEmpty(c->bpop.keys, NULL);
     if (c->bpop.target) {
         decrRefCount(c->bpop.target);
         c->bpop.target = NULL;
@@ -1244,11 +1255,11 @@ void signalListAsReady(redisClient *c, robj *key) {
 
     /* No clients blocking for this key? No need to queue it. */
     // 没有客户端被这个键阻塞，直接返回
-    if (dictFind(c->db->blocking_keys,key) == NULL) return;
+    if (dictFind(c->db->blocking_keys, key) == NULL) return;
 
     /* Key was already signaled? No need to queue it again. */
     // 这个键已经被添加到 ready_keys 中了，直接返回
-    if (dictFind(c->db->ready_keys,key) != NULL) return;
+    if (dictFind(c->db->ready_keys, key) != NULL) return;
 
     /* Ok, we need to queue this key into server.ready_keys. */
     // 创建一个 readyList 结构，保存键和数据库
@@ -1257,7 +1268,7 @@ void signalListAsReady(redisClient *c, robj *key) {
     rl->key = key;
     rl->db = c->db;
     incrRefCount(key);
-    listAddNodeTail(server.ready_keys,rl);
+    listAddNodeTail(server.ready_keys, rl);
 
     /* We also add the key in the db->ready_keys dictionary in order
      * to avoid adding it multiple times into a list with a simple O(1)
@@ -1266,7 +1277,7 @@ void signalListAsReady(redisClient *c, robj *key) {
      * 将 key 添加到 c->db->ready_keys 集合中，防止重复添加
      */
     incrRefCount(key);
-    redisAssert(dictAdd(c->db->ready_keys,key,NULL) == DICT_OK);
+    redisAssert(dictAdd(c->db->ready_keys, key, NULL) == DICT_OK);
 }
 
 /* This is a helper function for handleClientsBlockedOnLists(). It's work
@@ -1309,48 +1320,46 @@ void signalListAsReady(redisClient *c, robj *key) {
  * 失败的情况只会出现在 BRPOPLPUSH 命令中，
  * 比如 POP 源列表成功，却发现 PUSH 的目标对象不是列表时，操作就会出现失败。
  */
-int serveClientBlockedOnList(redisClient *receiver, robj *key, robj *dstkey, redisDb *db, robj *value, int where)
-{
+int serveClientBlockedOnList(redisClient *receiver, robj *key, robj *dstkey, redisDb *db, robj *value, int where) {
     robj *argv[3];
 
     // 执行的是 BLPOP 或 BRPOP
     if (dstkey == NULL) {
         /* Propagate the [LR]POP operation. */
         argv[0] = (where == REDIS_HEAD) ? shared.lpop :
-                                          shared.rpop;
+                  shared.rpop;
         argv[1] = key;
         propagate((where == REDIS_HEAD) ?
-            server.lpopCommand : server.rpopCommand,
-            db->id,argv,2,REDIS_PROPAGATE_AOF|REDIS_PROPAGATE_REPL);
+                  server.lpopCommand : server.rpopCommand,
+                  db->id, argv, 2, REDIS_PROPAGATE_AOF | REDIS_PROPAGATE_REPL);
 
         /* BRPOP/BLPOP */
-        addReplyMultiBulkLen(receiver,2);
-        addReplyBulk(receiver,key);
-        addReplyBulk(receiver,value);
+        addReplyMultiBulkLen(receiver, 2);
+        addReplyBulk(receiver, key);
+        addReplyBulk(receiver, value);
 
-    // 执行的是 BRPOPLPUSH 
+        // 执行的是 BRPOPLPUSH
     } else {
         /* BRPOPLPUSH */
 
         // 取出目标对象
         robj *dstobj =
-            lookupKeyWrite(receiver->db,dstkey);
+                lookupKeyWrite(receiver->db, dstkey);
         if (!(dstobj &&
-             checkType(receiver,dstobj,REDIS_LIST)))
-        {
+              checkType(receiver, dstobj, REDIS_LIST))) {
             /* Propagate the RPOP operation. */
             // 传播 RPOP 命令
             argv[0] = shared.rpop;
             argv[1] = key;
             propagate(server.rpopCommand,
-                db->id,argv,2,
-                REDIS_PROPAGATE_AOF|
-                REDIS_PROPAGATE_REPL);
+                      db->id, argv, 2,
+                      REDIS_PROPAGATE_AOF |
+                      REDIS_PROPAGATE_REPL);
 
             // 将值推入到 dstobj 中，如果 dstobj 不存在，
             // 那么新创建一个
-            rpoplpushHandlePush(receiver,dstkey,dstobj,
-                value);
+            rpoplpushHandlePush(receiver, dstkey, dstobj,
+                                value);
 
             /* Propagate the LPUSH operation. */
             // 传播 LPUSH 命令
@@ -1358,9 +1367,9 @@ int serveClientBlockedOnList(redisClient *receiver, robj *key, robj *dstkey, red
             argv[1] = dstkey;
             argv[2] = value;
             propagate(server.lpushCommand,
-                db->id,argv,3,
-                REDIS_PROPAGATE_AOF|
-                REDIS_PROPAGATE_REPL);
+                      db->id, argv, 3,
+                      REDIS_PROPAGATE_AOF |
+                      REDIS_PROPAGATE_REPL);
         } else {
             /* BRPOPLPUSH failed because of wrong
              * destination type. */
@@ -1396,7 +1405,7 @@ int serveClientBlockedOnList(redisClient *receiver, robj *key, robj *dstkey, red
 void handleClientsBlockedOnLists(void) {
 
     // 遍历整个 ready_keys 链表
-    while(listLength(server.ready_keys) != 0) {
+    while (listLength(server.ready_keys) != 0) {
         list *l;
 
         /* Point server.ready_keys to a fresh list and save the current one
@@ -1407,7 +1416,7 @@ void handleClientsBlockedOnLists(void) {
         l = server.ready_keys;
         server.ready_keys = listCreate();
 
-        while(listLength(l) != 0) {
+        while (listLength(l) != 0) {
 
             // 取出 ready_keys 中的首个链表节点
             listNode *ln = listFirst(l);
@@ -1418,24 +1427,24 @@ void handleClientsBlockedOnLists(void) {
             /* First of all remove this key from db->ready_keys so that
              * we can safely call signalListAsReady() against this key. */
             // 从 ready_keys 中移除就绪的 key
-            dictDelete(rl->db->ready_keys,rl->key);
+            dictDelete(rl->db->ready_keys, rl->key);
 
             /* If the key exists and it's a list, serve blocked clients
              * with data. */
             // 获取键对象，这个对象应该是非空的，并且是列表
-            robj *o = lookupKeyWrite(rl->db,rl->key);
+            robj *o = lookupKeyWrite(rl->db, rl->key);
             if (o != NULL && o->type == REDIS_LIST) {
                 dictEntry *de;
 
                 /* We serve clients in the same order they blocked for
                  * this key, from the first blocked to the last. */
                 // 取出所有被这个 key 阻塞的客户端
-                de = dictFind(rl->db->blocking_keys,rl->key);
+                de = dictFind(rl->db->blocking_keys, rl->key);
                 if (de) {
                     list *clients = dictGetVal(de);
                     int numclients = listLength(clients);
 
-                    while(numclients--) {
+                    while (numclients--) {
                         // 取出客户端
                         listNode *clientnode = listFirst(clients);
                         redisClient *receiver = clientnode->value;
@@ -1448,7 +1457,7 @@ void handleClientsBlockedOnLists(void) {
                         int where = (receiver->lastcmd &&
                                      receiver->lastcmd->proc == blpopCommand) ?
                                     REDIS_HEAD : REDIS_TAIL;
-                        robj *value = listTypePop(o,where);
+                        robj *value = listTypePop(o, where);
 
                         // 还有元素可弹出（非 NULL）
                         if (value) {
@@ -1462,12 +1471,11 @@ void handleClientsBlockedOnLists(void) {
 
                             // 将值 value 推入到造成客户度 receiver 阻塞的 key 上
                             if (serveClientBlockedOnList(receiver,
-                                rl->key,dstkey,rl->db,value,
-                                where) == REDIS_ERR)
-                            {
+                                                         rl->key, dstkey, rl->db, value,
+                                                         where) == REDIS_ERR) {
                                 /* If we failed serving the client we need
                                  * to also undo the POP operation. */
-                                    listTypePush(o,value,where);
+                                listTypePush(o, value, where);
                             }
 
                             if (dstkey) decrRefCount(dstkey);
@@ -1479,9 +1487,9 @@ void handleClientsBlockedOnLists(void) {
                         }
                     }
                 }
-                
+
                 // 如果列表元素已经为空，那么从数据库中将它删除
-                if (listTypeLength(o) == 0) dbDelete(rl->db,rl->key);
+                if (listTypeLength(o) == 0) dbDelete(rl->db, rl->key);
                 /* We don't call signalModifiedKey() as it was already called
                  * when an element was pushed on the list. */
             }
@@ -1489,7 +1497,7 @@ void handleClientsBlockedOnLists(void) {
             /* Free this item. */
             decrRefCount(rl->key);
             zfree(rl);
-            listDelNode(l,ln);
+            listDelNode(l, ln);
         }
         listRelease(l); /* We have the new list on place at this point. */
     }
@@ -1502,19 +1510,20 @@ void blockingPopGenericCommand(redisClient *c, int where) {
     int j;
 
     // 取出 timeout 参数
-    if (getTimeoutFromObjectOrReply(c,c->argv[c->argc-1],&timeout,UNIT_SECONDS)
-        != REDIS_OK) return;
+    if (getTimeoutFromObjectOrReply(c, c->argv[c->argc - 1], &timeout, UNIT_SECONDS)
+        != REDIS_OK)
+        return;
 
     // 遍历所有列表键
-    for (j = 1; j < c->argc-1; j++) {
+    for (j = 1; j < c->argc - 1; j++) {
 
         // 取出列表键
-        o = lookupKeyWrite(c->db,c->argv[j]);
+        o = lookupKeyWrite(c->db, c->argv[j]);
 
         // 有非空列表？
         if (o != NULL) {
             if (o->type != REDIS_LIST) {
-                addReply(c,shared.wrongtypeerr);
+                addReply(c, shared.wrongtypeerr);
                 return;
             } else {
                 // 非空列表
@@ -1523,38 +1532,38 @@ void blockingPopGenericCommand(redisClient *c, int where) {
                     char *event = (where == REDIS_HEAD) ? "lpop" : "rpop";
 
                     // 弹出值
-                    robj *value = listTypePop(o,where);
+                    robj *value = listTypePop(o, where);
 
                     redisAssert(value != NULL);
 
                     // 回复客户端
-                    addReplyMultiBulkLen(c,2);
+                    addReplyMultiBulkLen(c, 2);
                     // 回复弹出元素的列表
-                    addReplyBulk(c,c->argv[j]);
+                    addReplyBulk(c, c->argv[j]);
                     // 回复弹出值
-                    addReplyBulk(c,value);
+                    addReplyBulk(c, value);
 
                     decrRefCount(value);
 
-                    notifyKeyspaceEvent(REDIS_NOTIFY_LIST,event,
-                                        c->argv[j],c->db->id);
+                    notifyKeyspaceEvent(REDIS_NOTIFY_LIST, event,
+                                        c->argv[j], c->db->id);
 
                     // 删除空列表
                     if (listTypeLength(o) == 0) {
-                        dbDelete(c->db,c->argv[j]);
-                        notifyKeyspaceEvent(REDIS_NOTIFY_GENERIC,"del",
-                                            c->argv[j],c->db->id);
+                        dbDelete(c->db, c->argv[j]);
+                        notifyKeyspaceEvent(REDIS_NOTIFY_GENERIC, "del",
+                                            c->argv[j], c->db->id);
                     }
 
-                    signalModifiedKey(c->db,c->argv[j]);
+                    signalModifiedKey(c->db, c->argv[j]);
 
                     server.dirty++;
 
                     /* Replicate it as an [LR]POP instead of B[LR]POP. */
                     // 传播一个 [LR]POP 而不是 B[LR]POP
-                    rewriteClientCommandVector(c,2,
-                        (where == REDIS_HEAD) ? shared.lpop : shared.rpop,
-                        c->argv[j]);
+                    rewriteClientCommandVector(c, 2,
+                                               (where == REDIS_HEAD) ? shared.lpop : shared.rpop,
+                                               c->argv[j]);
                     return;
                 }
             }
@@ -1566,7 +1575,7 @@ void blockingPopGenericCommand(redisClient *c, int where) {
     // 如果命令在一个事务中执行，那么为了不产生死等待
     // 服务器只能向客户端发送一个空回复
     if (c->flags & REDIS_MULTI) {
-        addReply(c,shared.nullmultibulk);
+        addReply(c, shared.nullmultibulk);
         return;
     }
 
@@ -1576,19 +1585,20 @@ void blockingPopGenericCommand(redisClient *c, int where) {
 }
 
 void blpopCommand(redisClient *c) {
-    blockingPopGenericCommand(c,REDIS_HEAD);
+    blockingPopGenericCommand(c, REDIS_HEAD);
 }
 
 void brpopCommand(redisClient *c) {
-    blockingPopGenericCommand(c,REDIS_TAIL);
+    blockingPopGenericCommand(c, REDIS_TAIL);
 }
 
 void brpoplpushCommand(redisClient *c) {
     mstime_t timeout;
 
     // 取出 timeout 参数
-    if (getTimeoutFromObjectOrReply(c,c->argv[3],&timeout,UNIT_SECONDS)
-        != REDIS_OK) return;
+    if (getTimeoutFromObjectOrReply(c, c->argv[3], &timeout, UNIT_SECONDS)
+        != REDIS_OK)
+        return;
 
     // 取出列表键
     robj *key = lookupKeyWrite(c->db, c->argv[1]);
@@ -1604,14 +1614,14 @@ void brpoplpushCommand(redisClient *c) {
             blockForKeys(c, c->argv + 1, 1, timeout, c->argv[2]);
         }
 
-    // 键非空，执行 RPOPLPUSH
+        // 键非空，执行 RPOPLPUSH
     } else {
         if (key->type != REDIS_LIST) {
             addReply(c, shared.wrongtypeerr);
         } else {
             /* The list exists and has elements, so
              * the regular rpoplpushCommand is executed. */
-            redisAssertWithInfo(c,key,listTypeLength(key) > 0);
+            redisAssertWithInfo(c, key, listTypeLength(key) > 0);
 
             rpoplpushCommand(c);
         }

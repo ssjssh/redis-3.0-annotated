@@ -1371,7 +1371,6 @@ unsigned char *zzlFind(unsigned char *zl, robj *ele, double *score) {
 unsigned char *zzlDelete(unsigned char *zl, unsigned char *eptr) {
     unsigned char *p = eptr;
 
-    /* TODO: add function to ziplist API to delete N elements from offset. */
     zl = ziplistDelete(zl, &p);
     zl = ziplistDelete(zl, &p);
     return zl;

@@ -1551,7 +1551,6 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
     }
 
     /* Cleanup expired MIGRATE cached sockets. */
-    // 集群。。。TODO
     run_with_period(1000) {
         migrateCloseTimedoutSockets();
     }
