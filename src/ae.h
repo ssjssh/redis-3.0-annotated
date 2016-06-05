@@ -159,7 +159,7 @@ typedef struct aeEventLoop {
     // 目前已注册的最大描述符
     int maxfd;   /* highest file descriptor currently registered */
 
-    // 目前已追踪的最大描述符
+    // 目前已追踪的最大描述符数目
     int setsize; /* max number of file descriptors tracked */
 
     // 用于生成时间事件 id
@@ -169,6 +169,7 @@ typedef struct aeEventLoop {
     time_t lastTime;     /* Used to detect system clock skew */
 
     // 已注册的文件事件
+    // 如果有一个文件事件要注册,那么这个事件的下标是文件描述符
     aeFileEvent *events; /* Registered events */
 
     // 已就绪的文件事件
@@ -180,7 +181,7 @@ typedef struct aeEventLoop {
     // 事件处理器的开关
     int stop;
 
-    // 多路复用库的私有数据
+    // 多路复用库的私有数据,在各个不同的API中存储apiState结构.
     void *apidata; /* This is used for polling API specific data */
 
     // 在处理事件前要执行的函数

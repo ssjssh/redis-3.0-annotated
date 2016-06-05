@@ -120,6 +120,7 @@ static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
         int j;
         
         numevents = retval;
+        //把从私有的API上得到的数据转换到redis事件处理器中的fired.
         for(j = 0; j < numevents; j++) {
             int mask = 0;
             struct kevent *e = state->events+j;
