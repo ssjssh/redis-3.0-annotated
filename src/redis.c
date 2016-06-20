@@ -1717,7 +1717,7 @@ void initServerConfig() {
 
     // 服务器状态
 
-    // 设置服务器的运行 ID
+    // 设置服务器的运行 ID,是一个随机的字符串,用来标识一个运行的实例.通过随机的方法来保证唯一性.
     getRandomHexChars(server.runid,REDIS_RUN_ID_SIZE);
     // 设置默认配置文件路径
     server.configfile = NULL;
@@ -1976,7 +1976,11 @@ void adjustOpenFilesLimit(void) {
  * error, at least one of the server.bindaddr addresses was
  * impossible to bind, or no bind addresses were specified in the server
  * configuration but the function is not able to bind * for at least
- * one of the IPv4 or IPv6 protocols. */
+ * one of the IPv4 or IPv6 protocols.
+ *
+ *
+ *
+ * */
 int listenToPort(int port, int *fds, int *count) {
     int j;
 
@@ -3796,7 +3800,7 @@ void version() {
         atoi(redisGitDirty()) > 0,
         ZMALLOC_LIB,
         sizeof(long) == 4 ? 32 : 64,
-        (unsigned long long) redisBuildId());
+        (unsigned long long) redisBuilxdId());
     exit(0);
 }
 
@@ -3942,6 +3946,7 @@ int main(int argc, char **argv) {
     zmalloc_set_oom_handler(redisOutOfMemoryHandler);
     srand(time(NULL)^getpid());
     gettimeofday(&tv,NULL);
+    //设置哈希表的随机种子
     dictSetHashFunctionSeed(tv.tv_sec^tv.tv_usec^getpid());
 
     // 检查服务器是否以 Sentinel 模式启动
@@ -4015,9 +4020,6 @@ int main(int argc, char **argv) {
         // 载入配置文件， options 是前面分析出的给定选项
         loadServerConfig(configfile,options);
         sdsfree(options);
-
-        // 获取配置文件的绝对路径
-        if (configfile) server.configfile = getAbsolutePath(configfile);
     } else {
         redisLog(REDIS_WARNING, "Warning: no config file specified, using the default config. In order to specify a config file use %s /path/to/%s.conf", argv[0], server.sentinel_mode ? "sentinel" : "redis");
     }

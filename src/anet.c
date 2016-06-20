@@ -70,6 +70,12 @@ int anetNonBlock(char *err, int fd)
     /* Set the socket non-blocking.
      * Note that fcntl(2) for F_GETFL and F_SETFL can't be
      * interrupted by a signal. */
+    /**
+     * 在多路复用中使用的连接必须设置为非阻塞, 具体来说就是通过fcntl调用设置
+     *
+     * fcntl:改变已经打开文件的属性.F_GETFL和F_SETFL都是命令,具体来说就是
+     * 第一步首先获取文件的标志,然后第二步加上NONBLOCK后重新设置.
+     */
     if ((flags = fcntl(fd, F_GETFL)) == -1) {
         anetSetError(err, "fcntl(F_GETFL): %s", strerror(errno));
         return ANET_ERR;
@@ -528,7 +534,7 @@ int anetUnixServer(char *err, char *path, mode_t perm, int backlog)
     return s;
 }
 
-static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len) {
+static int  anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len) {
     int fd;
     while(1) {
         fd = accept(s,sa,len);
