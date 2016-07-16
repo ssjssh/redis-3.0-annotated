@@ -1206,7 +1206,7 @@ struct redisServer {
     int slave_priority;             /* Reported in INFO and used by Sentinel. */
     // 本服务器（从服务器）当前主服务器的 RUN ID
     char repl_master_runid[REDIS_RUN_ID_SIZE+1];  /* Master run id for PSYNC. */
-    // 初始化偏移量
+    // 主服务的初始化偏移量
     long long repl_master_initial_offset;         /* Master PSYNC offset. */
 
 

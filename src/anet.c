@@ -286,9 +286,10 @@ static int anetTcpGenericConnect(char *err, char *addr, int port,
         return ANET_ERR;
     }
     for (p = servinfo; p != NULL; p = p->ai_next) {
-        /* Try to create the socket and to connect it.
-         * If we fail in the socket() call, or on connect(), we retry with
-         * the next entry in servinfo. */
+       /**
+        * 这个循环会一个一个尝试所有的IP地址,但是只要一个连接成功就退出.
+        * 所以最后只有一个连接和主服务连接.
+        */
         if ((s = socket(p->ai_family,p->ai_socktype,p->ai_protocol)) == -1)
             continue;
         if (anetSetReuseAddr(err,s) == ANET_ERR) goto error;

@@ -1435,7 +1435,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
         int statloc;
         pid_t pid;
 
-        // 接收子进程发来的信号，非阻塞
+        // 接收子进程发来的信号，非阻塞,其中WNOHANG就表示非阻塞。
         if ((pid = wait3(&statloc,WNOHANG,NULL)) != 0) {
             int exitcode = WEXITSTATUS(statloc);
             int bysignal = 0;

@@ -218,7 +218,7 @@ int prepareClientToWrite(redisClient *c) {
 
     // LUA 脚本环境所使用的伪客户端总是可写的
     if (c->flags & REDIS_LUA_CLIENT) return REDIS_OK;
-    
+
     // 客户端是主服务器并且不接受查询，
     // 那么它是不可写的，出错
     if ((c->flags & REDIS_MASTER) &&
