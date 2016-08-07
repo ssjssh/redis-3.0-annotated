@@ -225,8 +225,7 @@ void setbitCommand(redisClient *c) {
     // 获取 value 参数
     if (getLongFromObjectOrReply(c,c->argv[3],&on,err) != REDIS_OK)
         return;
-
-    /* Bits can only be set or cleared... */
+    // ~1 = 0xFFFFFFFE
     // value 参数的值只能是 0 或者 1 ，否则返回错误
     if (on & ~1) {
         addReplyError(c,err);
@@ -251,12 +250,9 @@ void setbitCommand(redisClient *c) {
         o = dbUnshareStringValue(c->db,c->argv[1],o);
     }
 
-    /* Grow sds value to the right length if necessary */
     // 计算容纳 offset 参数所指定的偏移量所需的字节数
     // 如果 o 对象的字节不够长的话，就扩展它
-    // 长度的计算公式是 bitoffset >> 3 + 1
-    // 比如 30 >> 3 + 1 = 4 ，也即是为了设置 offset 30 ，
-    // 我们需要创建一个 4 字节（32 位长的 SDS）
+    // 左移3位表示除以2^3=8, 然后加1就是需要的数组长度
     byte = bitoffset >> 3;
     o->ptr = sdsgrowzero(o->ptr,byte+1);
 
@@ -264,11 +260,11 @@ void setbitCommand(redisClient *c) {
     // 将指针定位到要设置的位所在的字节上
     byteval = ((uint8_t*)o->ptr)[byte];
     // 定位到要设置的位上面
+    // bitoffset & 0x7  => bitoffset % 8 , 而 bit 是从右边开始数。
     bit = 7 - (bitoffset & 0x7);
     // 记录位现在的值
     bitval = byteval & (1 << bit);
 
-    /* Update byte with new bit value and return original value */
     // 更新字节中的位，设置它的值为 on 参数的值
     byteval &= ~(1 << bit);
     byteval |= ((on & 0x1) << bit);
