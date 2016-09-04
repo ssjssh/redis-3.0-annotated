@@ -2425,7 +2425,7 @@ void call(redisClient *c, int flags) {
 
     /* Sent the command to clients in MONITOR mode, only if the commands are
      * not generated from reading an AOF. */
-    // 如果可以的话，将命令发送到 MONITOR
+    // 如果可以的话(除去AOF文件中的命令)，将命令发送到 MONITOR
     if (listLength(server.monitors) &&
         !server.loading &&
         !(c->cmd->flags & REDIS_CMD_SKIP_MONITOR))

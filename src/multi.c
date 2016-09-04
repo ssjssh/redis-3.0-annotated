@@ -270,12 +270,14 @@ void execCommand(redisClient *c) {
     // 将服务器设为脏，确保 EXEC 命令也会被传播
     if (must_propagate) server.dirty++;
 
-handle_monitor:
-    /* Send EXEC to clients waiting data from MONITOR. We do it here
-     * since the natural order of commands execution is actually:
-     * MUTLI, EXEC, ... commands inside transaction ...
-     * Instead EXEC is flagged as REDIS_CMD_SKIP_MONITOR in the command
-     * table, and we do it here with correct ordering. */
+    handle_monitor:
+    /**
+     * 这些向monitor发送exec命令,这是因为非事务命令的实现是在执行前调用replicationFeedMonitors
+     * 但是在事务中,这样顺序就不对了: exec => command in translation。
+     *
+     * 所以execCommand设置跳过monitor的标志,然后在事务中所有命令执行完成之后再手动调用replicationFeedMonitors
+     * 来写入monitor,这样就可以保证顺序是对的。
+     */
     if (listLength(server.monitors) && !server.loading)
         replicationFeedMonitors(c,server.monitors,c->db->id,c->argv,c->argc);
 }
