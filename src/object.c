@@ -658,7 +658,7 @@ robj *getDecodedObject(robj *o) {
 
 /* Compare two string objects via strcmp() or strcoll() depending on flags.
  *
- * 根据 flags 的值，决定是使用 strcmp() 或者 strcoll() 来对比字符串对象。
+ * 根据 flags 的值，决定是使用 memcmp() 或者 strcoll() 来对比字符串对象。
  *
  * Note that the objects may be integer-encoded. In such a case we
  * use ll2string() to get a string representation of the numbers on the stack
@@ -672,7 +672,9 @@ robj *getDecodedObject(robj *o) {
  * Important note: when REDIS_COMPARE_BINARY is used a binary-safe comparison
  * is used. 
  * 当 flags 为 REDIS_COMPARE_BINARY 时，
- * 对比以二进制安全的方式进行。
+ * 对比以二进制安全的方式进行。使用memcmp比较对象
+ * 当 flags 为 REDIS_COMPARE_COLL 时,
+ * 对比以本地化的字符集设置来进行
  */
 
 #define REDIS_COMPARE_BINARY (1<<0)

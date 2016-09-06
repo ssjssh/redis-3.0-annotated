@@ -1880,7 +1880,7 @@ void replicationResurrectCachedMaster(int newfd) {
     }
 }
 
-7
+
 
 /* ------------------------- MIN-SLAVES-TO-WRITE  --------------------------- */
 
